@@ -45,6 +45,7 @@ FIELD_ALIASES = {
     "current_price": "current_price",
     "current price": "current_price",
     "price": "current_price",
+    "upx": "current_price",
     "daily_change": "daily_change_percent",
     "daily change": "daily_change_percent",
     "daily_change_percent": "daily_change_percent",
@@ -149,6 +150,23 @@ DATE_FIELDS = {"earnings_date", "top_gamma_exp", "top_delta_exp"}
 TEXT_FIELDS = {"ticker", "company_name"}
 
 
+def parse_number_series(value: Any) -> List[float]:
+    value = normalize_missing(value)
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        raw_items = value
+    else:
+        raw_items = str(value).split(",")
+
+    numbers: List[float] = []
+    for item in raw_items:
+        number = normalize_number(item)
+        if number is not None:
+            numbers.append(float(number))
+    return numbers
+
+
 def normalize_key(key: str) -> str:
     cleaned = str(key).strip().replace("-", " ").replace(".", " ")
     cleaned = re.sub(r"\s+", " ", cleaned)
@@ -241,6 +259,20 @@ def normalize_spotgamma_candidate(item: Dict[str, Any]) -> Dict[str, Any]:
     if output["ticker"]:
         output["ticker"] = output["ticker"].upper()
 
+    hist_prices = parse_number_series(keyed.get("hist_px"))
+    if output["current_price"] is None and hist_prices:
+        output["current_price"] = hist_prices[0]
+    if output["previous_close"] is None and len(hist_prices) > 1:
+        output["previous_close"] = hist_prices[1]
+    if (
+        output["daily_change_percent"] is None
+        and output["current_price"] is not None
+        and output["previous_close"] not in {None, 0}
+    ):
+        current_price = float(output["current_price"])
+        previous_close = float(output["previous_close"])
+        output["daily_change_percent"] = round(((current_price - previous_close) / previous_close) * 100, 4)
+
     return output
 
 
@@ -271,3 +303,11 @@ def run_normalization_self_test() -> None:
     date = normalize_date("2026-06-19")
     if date != "2026-06-19":
         raise AssertionError(f"normalize_date failed: {date!r}")
+
+    derived = normalize_spotgamma_candidate({"sym": "UMC", "upx": 19.98, "hist_px": "19.98,19.72"})
+    if derived["current_price"] != 19.98:
+        raise AssertionError(f"current_price derivation failed: {derived['current_price']!r}")
+    if derived["previous_close"] != 19.72:
+        raise AssertionError(f"previous_close derivation failed: {derived['previous_close']!r}")
+    if derived["daily_change_percent"] != 1.3185:
+        raise AssertionError(f"daily_change_percent derivation failed: {derived['daily_change_percent']!r}")

@@ -1,0 +1,8 @@
+{
+  "name": "kk-options-viewer",
+  "private": true,
+  "scripts": {
+    "typecheck": "node --check app.js",
+    "build": "node --check app.js"
+  }
+}

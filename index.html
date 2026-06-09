@@ -53,7 +53,10 @@
 
       <section id="candidates" class="panel active">
         <div class="toolbar">
-          <input id="candidateSearch" type="search" placeholder="Search ticker or company" />
+          <input id="candidateSearch" type="search" placeholder="Search ticker" />
+          <select id="candidateDate" aria-label="Select squeezing scanner date">
+            <option value="latest">Latest</option>
+          </select>
           <select id="candidateSort" aria-label="Sort squeezing scanner">
             <option value="ticker">Ticker</option>
             <option value="options_implied_move">Options Implied Move</option>
@@ -64,15 +67,15 @@
             <option value="call_volume">Call Volume</option>
             <option value="put_volume">Put Volume</option>
           </select>
+          <button id="candidateDirection" class="toolButton" type="button" aria-label="Toggle sort direction" data-direction="desc">
+            Desc
+          </button>
         </div>
         <div class="tableWrap">
           <table>
             <thead>
               <tr>
                 <th>Ticker</th>
-                <th>Company</th>
-                <th>Price</th>
-                <th>Change %</th>
                 <th>Call Wall</th>
                 <th>Put Wall</th>
                 <th>Skew Rank</th>
@@ -99,23 +102,85 @@
           </aside>
           <section class="detailPane">
             <div class="detailHeader">
-              <h2 id="selectedTicker">Select a ticker</h2>
+              <div>
+                <h2 id="selectedTicker">Select a ticker</h2>
+                <p id="tickerMeta" class="mutedLine">No ticker selected.</p>
+              </div>
               <div id="tickerBadges" class="badges"></div>
             </div>
-            <div class="jsonGrid">
-              <article>
-                <h3>Levels</h3>
-                <pre id="levelsJson">{}</pre>
-              </article>
-              <article>
-                <h3>State Greeks</h3>
-                <pre id="stateJson">{}</pre>
-              </article>
-              <article>
-                <h3>Orderflow</h3>
-                <pre id="orderflowJson">{}</pre>
-              </article>
-            </div>
+
+            <section class="dashboardSection" aria-label="Levels summary">
+              <div class="sectionHeader">
+                <h3>Levels Summary</h3>
+              </div>
+              <div id="levelsCards" class="cardGrid"></div>
+            </section>
+
+            <section class="gammaPanel" aria-label="Gamma Ladder">
+              <div class="gammaHeader">
+                <div>
+                  <h3 id="gammaTitle">Gamma Ladder / GEX Proxy</h3>
+                  <p class="mutedLine">STATE GREEKS mini_contracts model. Positive values plot upward, negative values downward.</p>
+                </div>
+                <div id="gammaMetrics" class="gammaMetrics"></div>
+              </div>
+              <div class="chartToolbar">
+                <label for="gammaZoom">Data Zoom</label>
+                <select id="gammaZoom" aria-label="Gamma ladder data zoom">
+                  <option value="all">All strikes</option>
+                  <option value="near" selected>Near spot</option>
+                  <option value="top">Top absolute</option>
+                </select>
+              </div>
+              <div id="gammaChart" class="gammaChart"></div>
+            </section>
+
+            <section class="dashboardSection" aria-label="Top gamma strikes">
+              <div class="sectionHeader">
+                <h3>Top Gamma Strikes</h3>
+              </div>
+              <div id="topGammaTables" class="tableGrid"></div>
+            </section>
+
+            <section class="dashboardSection" aria-label="Orderflow summary">
+              <div class="sectionHeader">
+                <h3>Orderflow Dashboard</h3>
+              </div>
+              <div id="orderflowCards" class="orderflowGroups"></div>
+              <div class="chartGrid">
+                <article>
+                  <h3>0DTE vs 1DTE+ Greeks / Flow</h3>
+                  <div id="flowCompareChart" class="barChart"></div>
+                </article>
+                <article>
+                  <h3>DEX Breakdown</h3>
+                  <div id="dexBreakdownChart" class="barChart"></div>
+                </article>
+              </div>
+            </section>
+
+            <section class="debugSection" aria-label="Raw JSON debug panels">
+              <div class="sectionHeader">
+                <h3>Raw JSON Debug</h3>
+              </div>
+              <div class="rawPanelGrid">
+                <details class="rawPanel">
+                  <summary>LEVELS</summary>
+                  <button class="copyButton" type="button" data-copy="levelsJson">Copy JSON</button>
+                  <pre id="levelsJson">{}</pre>
+                </details>
+                <details class="rawPanel">
+                  <summary>STATE GREEKS</summary>
+                  <button class="copyButton" type="button" data-copy="stateJson">Copy JSON</button>
+                  <pre id="stateJson">{}</pre>
+                </details>
+                <details class="rawPanel">
+                  <summary>ORDERFLOW</summary>
+                  <button class="copyButton" type="button" data-copy="orderflowJson">Copy JSON</button>
+                  <pre id="orderflowJson">{}</pre>
+                </details>
+              </div>
+            </section>
           </section>
         </div>
       </section>

@@ -72,6 +72,8 @@ python src/main.py fetch-spotgamma
 python src/main.py fetch-all
 python src/main.py normalize-test
 python src/main.py serve
+python src/main.py install-spotgamma-task
+python src/main.py build-gex-proxy
 ```
 
 打开本地页面 / Open the local viewer:
@@ -80,11 +82,14 @@ python src/main.py serve
 http://localhost:8765/
 ```
 
-中文：页面里的 `Fetch Live Data` 会真实运行 Gexbot + SpotGamma 抓取，并刷新 latest JSON。`Reload JSON` 只重新读取本地已有 JSON。  
-English: The `Fetch Live Data` button runs a real Gexbot + SpotGamma fetch and refreshes the latest JSON. `Reload JSON` only reloads the existing local JSON files.
+中文：页面里的 `Fetch Live Data` 只刷新 Stock Details，不会抓取新的 Squeezing Scanner。`Reload JSON` 只重新读取本地已有 JSON。  
+English: The `Fetch Live Data` button refreshes Stock Details only and does not fetch new Squeezing Scanner data. `Reload JSON` only reloads the existing local JSON files.
 
 中文：不要直接用 `file:///.../index.html` 作为主要入口；浏览器会限制本地 JSON/API 请求。若误打开 file 页面，页面会尝试连接 `http://127.0.0.1:8765/`，但仍需要先运行 `python src/main.py serve`。  
 English: Do not use `file:///.../index.html` as the main entry. Browsers restrict local JSON/API requests. If the file page is opened by mistake, it will try `http://127.0.0.1:8765/`, but `python src/main.py serve` must still be running.
+
+中文：`install-spotgamma-task` 会安装本机登录启动脚本，后台运行 `schedule-spotgamma`，每天 America/New_York 时间 09:31 自动抓取 Squeezing Scanner 数据，并按日期保存历史快照供前端回看。  
+English: `install-spotgamma-task` installs a local startup script that runs `schedule-spotgamma` in the background, fetches Squeezing Scanner data daily at 09:31 America/New_York, and saves date-based snapshots for review in the viewer.
 
 ## Gexbot
 
@@ -107,6 +112,27 @@ English: Do not use `file:///.../index.html` as the main entry. Browsers restric
 
 中文：Gexbot API key 必须从 `.env` 读取，程序不会打印完整 `Authorization` header。  
 English: The Gexbot API key must be read from `.env`. The full `Authorization` header is never printed.
+
+## GEX Proxy / Gamma Ladder
+
+中文：`fetch-gexbot` 会读取 state greeks 里的 `mini_contracts`，生成标准化 GEX Proxy 模型和 Gamma Ladder 数据。  
+English: `fetch-gexbot` reads `mini_contracts` from state greeks and builds normalized GEX Proxy models plus Gamma Ladder data.
+
+输出文件 / Output file:
+
+- `data/normalized/gex-proxy-latest.json`
+
+独立建模命令 / Standalone model command:
+
+```bash
+python src/main.py build-gex-proxy --input data/normalized/gexbot-state-greeks-latest.json --output data/normalized/gex-proxy-latest.json
+```
+
+模型内容 / Model contents:
+
+- normalized ladder rows: `strike`, `gamma`, `abs_gamma`, `side`, `distance_from_spot`, `dte_values`
+- derived metrics: net gamma, positive gamma, negative gamma, absolute gamma, zero-gamma proxy, largest positive/negative strike
+- viewer chart: `Stock Details -> Gamma Ladder`
 
 ## SpotGamma
 
@@ -183,8 +209,8 @@ Normalized files:
 - `data/normalized/spotgamma-squeeze-candidates-latest.json`
 - `data/normalized/options-data-latest.json`
 
-中文：`data/raw/`、`data/normalized/` 和 `data/session/` 默认被 `.gitignore` 忽略，不提交真实第三方数据。  
-English: `data/raw/`, `data/normalized/`, and `data/session/` are ignored by `.gitignore` by default. Do not commit real third-party data.
+中文：`data/raw/`、`data/normalized/`、`data/session/` 和 `data/scheduler/` 默认被 `.gitignore` 忽略，不提交真实第三方数据或本地日志。  
+English: `data/raw/`, `data/normalized/`, `data/session/`, and `data/scheduler/` are ignored by `.gitignore` by default. Do not commit real third-party data or local logs.
 
 ## 标准化字段 / Normalized Fields
 

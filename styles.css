@@ -88,6 +88,12 @@ h3 {
   color: var(--muted);
 }
 
+.mutedLine {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .actions,
 .statusBar,
 .tabs,
@@ -257,7 +263,7 @@ select {
 }
 
 .tableWrap {
-  overflow: auto;
+  overflow: hidden auto;
   max-height: calc(100vh - 282px);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -266,17 +272,18 @@ select {
 
 table {
   width: 100%;
-  min-width: 1460px;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 
 th,
 td {
-  padding: 10px 12px;
+  padding: 9px 8px;
   border-bottom: 1px solid var(--line-soft);
-  text-align: left;
+  text-align: center;
   vertical-align: middle;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 th {
@@ -291,7 +298,7 @@ th {
 
 td.number {
   font-family: var(--mono);
-  text-align: right;
+  text-align: center;
 }
 
 .negative {
@@ -300,6 +307,11 @@ td.number {
 
 .tickerCell {
   font-weight: 800;
+}
+
+#candidates th,
+#candidates td {
+  font-size: 12px;
 }
 
 .split {
@@ -362,6 +374,269 @@ td.number {
   margin-bottom: 12px;
 }
 
+.dashboardSection,
+.debugSection {
+  margin-bottom: 12px;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.cardGrid,
+.miniCardGrid {
+  display: grid;
+  gap: 10px;
+}
+
+.cardGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.miniCardGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.metricCard {
+  min-height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  padding: 12px;
+}
+
+.metricCard span,
+.metricCard small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metricCard strong {
+  display: block;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 21px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.metricCard small {
+  margin-top: 6px;
+}
+
+.gammaPanel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.gammaHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.chartToolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chartToolbar select {
+  min-width: 150px;
+  height: 32px;
+}
+
+.gammaMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.gammaChart {
+  min-height: 320px;
+  overflow: auto;
+  padding: 12px;
+}
+
+.gammaSvg {
+  display: block;
+  width: 100%;
+  min-width: 760px;
+  height: auto;
+}
+
+.chartAxis,
+.zeroAxis {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.zeroAxis {
+  stroke: var(--muted);
+  stroke-dasharray: 5 5;
+}
+
+.svgBar {
+  opacity: 0.88;
+}
+
+.svgBar:hover {
+  opacity: 1;
+  stroke: var(--text);
+  stroke-width: 1;
+}
+
+.svgBar.positiveGamma {
+  fill: var(--success);
+}
+
+.svgBar.negativeGamma {
+  fill: var(--danger);
+}
+
+.spotLine,
+.zeroGammaLine,
+.majorPositiveLine,
+.majorNegativeLine,
+.majorLongLine,
+.majorShortLine {
+  stroke-width: 1.5;
+  stroke-dasharray: 4 4;
+}
+
+.spotLine {
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
+.zeroGammaLine {
+  stroke: #f59e0b;
+}
+
+.majorPositiveLine,
+.majorLongLine {
+  stroke: var(--success);
+}
+
+.majorNegativeLine,
+.majorShortLine {
+  stroke: var(--danger);
+}
+
+.axisLabel,
+.lineLabel,
+.topLabel {
+  fill: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+.axisLabel.end {
+  text-anchor: end;
+}
+
+.lineLabel {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.topMarker {
+  fill: #f59e0b;
+  stroke: var(--panel);
+  stroke-width: 1.5;
+}
+
+.topLabel {
+  text-anchor: middle;
+  fill: #f59e0b;
+  font-size: 10px;
+}
+
+.gammaRow {
+  display: grid;
+  grid-template-columns: minmax(58px, 72px) minmax(0, 1fr) minmax(72px, 92px);
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.gammaStrike,
+.gammaValue {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.gammaStrike {
+  text-align: right;
+  color: var(--muted);
+}
+
+.gammaValue {
+  text-align: left;
+}
+
+.gammaTrack {
+  position: relative;
+  height: 14px;
+  border-radius: 999px;
+  background: var(--panel-soft);
+  overflow: hidden;
+}
+
+.gammaAxis {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.gammaBar {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  max-width: 50%;
+  border-radius: 999px;
+}
+
+.positiveGamma {
+  left: 50%;
+  background: var(--success);
+}
+
+.negativeGamma {
+  right: 50%;
+  background: var(--danger);
+}
+
+.spotStrike .gammaStrike {
+  color: var(--accent-strong);
+  font-weight: 800;
+}
+
+.emptyState {
+  color: var(--muted);
+  padding: 10px 0;
+  text-align: center;
+}
+
 .badges {
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -373,6 +648,159 @@ td.number {
   padding: 5px 9px;
   background: var(--panel-soft);
   color: var(--muted);
+  font-size: 12px;
+}
+
+.badge b {
+  color: var(--text);
+}
+
+.tableGrid,
+.chartGrid,
+.rawPanelGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.tableGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.chartGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 12px;
+}
+
+.compactTable,
+.chartGrid article,
+.orderflowGroup,
+.rawPanel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.compactTable h3,
+.chartGrid h3,
+.orderflowGroup h3 {
+  padding: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.compactTable table {
+  font-size: 12px;
+}
+
+.compactTable th,
+.compactTable td {
+  padding: 8px 6px;
+}
+
+.orderflowGroups {
+  display: grid;
+  gap: 12px;
+}
+
+.barChart {
+  padding: 12px;
+}
+
+.groupedBarRow,
+.signedBarRow {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.groupedBarRow {
+  grid-template-columns: 70px minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.signedBarRow {
+  grid-template-columns: 138px minmax(0, 1fr);
+}
+
+.barLabel {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.miniSignedBar {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 78px;
+  align-items: center;
+  gap: 6px;
+}
+
+.miniSignedBar span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.miniSignedBar em {
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-style: normal;
+  text-align: right;
+}
+
+.miniSignedTrack {
+  position: relative;
+  height: 13px;
+  border-radius: 999px;
+  background: var(--panel-soft);
+  overflow: hidden;
+}
+
+.miniSignedTrack i {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--line);
+}
+
+.miniSignedTrack b {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 999px;
+}
+
+.rawPanelGrid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rawPanel {
+  position: relative;
+}
+
+.rawPanel summary {
+  cursor: pointer;
+  padding: 12px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.copyButton {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  padding: 0 9px;
   font-size: 12px;
 }
 
@@ -407,7 +835,12 @@ pre {
 @media (max-width: 980px) {
   .metrics,
   .split,
-  .jsonGrid {
+  .jsonGrid,
+  .cardGrid,
+  .miniCardGrid,
+  .tableGrid,
+  .chartGrid,
+  .rawPanelGrid {
     grid-template-columns: 1fr;
   }
 

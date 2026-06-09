@@ -6,3 +6,4 @@ __pycache__/
 data/raw/
 data/normalized/
 data/session/
+data/scheduler/
