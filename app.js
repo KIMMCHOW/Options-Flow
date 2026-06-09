@@ -496,6 +496,12 @@ function renderInteractiveGammaChart(model, ladder) {
   }
 
   const chartElement = $("gammaChart");
+  if (chartElement.clientWidth <= 0) {
+    disposeGammaChart();
+    chartElement.innerHTML = empty("Open Stock Details to render gamma ladder.");
+    return;
+  }
+
   if (!gammaChartInstance) {
     chartElement.innerHTML = "";
     gammaChartInstance = echarts.init(chartElement, document.documentElement.dataset.theme === "dark" ? "dark" : null);
@@ -626,9 +632,11 @@ function renderInteractiveGammaChart(model, ladder) {
         type: "bar",
         yAxisIndex: 1,
         data: barData,
-        barMinWidth: 2,
-        barMaxWidth: 12,
+        barMinWidth: 4,
+        barMaxWidth: 18,
+        z: 3,
         itemStyle: {
+          opacity: 0.94,
           color: (params) => {
             const row = params.data?.[2];
             return row?.current_value >= 0 ? "#22c55e" : "#7c3aed";
@@ -1203,6 +1211,9 @@ document.querySelectorAll(".tab").forEach((button) => {
     document.querySelectorAll(".panel").forEach((panel) => panel.classList.remove("active"));
     button.classList.add("active");
     $(button.dataset.tab).classList.add("active");
+    if (button.dataset.tab === "stockDetails") {
+      requestAnimationFrame(() => renderGammaLadder(state.selectedModel));
+    }
   });
 });
 
