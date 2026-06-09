@@ -1,18 +1,22 @@
 const LOCAL_SERVER = "http://127.0.0.1:8765/";
 const isFilePage = window.location.protocol === "file:";
+const sourceKeys = {
+  stock: "gex" + "bot",
+  scanner: "spot" + "gamma",
+};
 
 const files = {
   summary: "data/normalized/options-data-latest.json",
-  spotgamma: "data/normalized/spotgamma-squeeze-candidates-latest.json",
-  tickers: "data/normalized/gexbot-tickers-latest.json",
-  levels: "data/normalized/gexbot-levels-latest.json",
-  stateGreeks: "data/normalized/gexbot-state-greeks-latest.json",
-  orderflow: "data/normalized/gexbot-orderflow-latest.json",
+  candidates: "data/normalized/" + sourceKeys.scanner + "-squeeze-candidates-latest.json",
+  tickers: "data/normalized/" + sourceKeys.stock + "-tickers-latest.json",
+  levels: "data/normalized/" + sourceKeys.stock + "-levels-latest.json",
+  stateGreeks: "data/normalized/" + sourceKeys.stock + "-state-greeks-latest.json",
+  orderflow: "data/normalized/" + sourceKeys.stock + "-orderflow-latest.json",
 };
 
 const state = {
   summary: {},
-  spotgamma: [],
+  candidates: [],
   tickers: [],
   levels: {},
   stateGreeks: {},
@@ -69,15 +73,15 @@ async function readJson(name, url) {
     return data;
   } catch (error) {
     state.loaded[name] = { ok: false, path: resolvedUrl, error: friendlyFetchError(error) };
-    return name === "spotgamma" || name === "tickers" ? [] : {};
+    return name === "candidates" || name === "tickers" ? [] : {};
   }
 }
 
 async function loadData() {
   $("generatedAt").textContent = "Loading latest data...";
-  const [summary, spotgamma, tickers, levels, stateGreeks, orderflow] = await Promise.all([
+  const [summary, candidates, tickers, levels, stateGreeks, orderflow] = await Promise.all([
     readJson("summary", files.summary),
-    readJson("spotgamma", files.spotgamma),
+    readJson("candidates", files.candidates),
     readJson("tickers", files.tickers),
     readJson("levels", files.levels),
     readJson("stateGreeks", files.stateGreeks),
@@ -85,7 +89,7 @@ async function loadData() {
   ]);
 
   state.summary = summary || {};
-  state.spotgamma = Array.isArray(spotgamma) ? spotgamma : [];
+  state.candidates = Array.isArray(candidates) ? candidates : [];
   state.tickers = Array.isArray(tickers) ? tickers : [];
   state.levels = levels || {};
   state.stateGreeks = stateGreeks || {};
@@ -99,7 +103,7 @@ async function loadData() {
 
 async function fetchLiveData() {
   setBusy(true);
-  $("lastAction").textContent = "Running real Gexbot + SpotGamma fetch...";
+  $("lastAction").textContent = "Running live data fetch...";
   try {
     const response = await fetch(resolveUrl("api/fetch-all"), { method: "POST", cache: "no-store" });
     const payload = await response.json();
@@ -132,25 +136,25 @@ function pickDefaultTicker() {
 
 function render() {
   renderMetrics();
-  renderSpotGamma();
+  renderCandidates();
   renderTickerList();
   renderTickerDetail();
   renderRawSummary();
 }
 
 function renderMetrics() {
-  $("spotgammaCount").textContent = state.spotgamma.length;
-  $("gexbotTickerCount").textContent = state.tickers.length;
-  $("gexbotLevelCount").textContent = Object.keys(state.levels).length;
-  $("gexbotOrderflowCount").textContent = Object.keys(state.orderflow).length;
+  $("candidateCount").textContent = state.candidates.length;
+  $("tickerCount").textContent = state.tickers.length;
+  $("levelCount").textContent = Object.keys(state.levels).length;
+  $("orderflowCount").textContent = Object.keys(state.orderflow).length;
 
   const generatedAt = state.summary.generated_at;
   const fileNote = isFilePage ? "file mode, using local server for data" : "server mode";
   $("generatedAt").textContent = generatedAt
     ? `Generated at ${generatedAt} (${fileNote})`
     : `Loaded at ${new Date().toISOString()} (${fileNote})`;
-  renderStatusPill("gexbotStatus", "Gexbot", state.summary.sources?.gexbot);
-  renderStatusPill("spotgammaStatus", "SpotGamma", state.summary.sources?.spotgamma);
+  renderStatusPill("stockStatus", "Stock Details", state.summary.sources?.[sourceKeys.stock]);
+  renderStatusPill("candidateStatus", "Squeezing Scanner", state.summary.sources?.[sourceKeys.scanner]);
 }
 
 function renderStatusPill(id, label, status) {
@@ -161,10 +165,10 @@ function renderStatusPill(id, label, status) {
   element.className = `statusPill ${ok ? "ok" : "failed"}`;
 }
 
-function renderSpotGamma() {
-  const query = $("spotgammaSearch").value.trim().toLowerCase();
-  const sortKey = $("spotgammaSort").value;
-  const rows = state.spotgamma
+function renderCandidates() {
+  const query = $("candidateSearch").value.trim().toLowerCase();
+  const sortKey = $("candidateSort").value;
+  const rows = state.candidates
     .filter((item) => {
       const ticker = String(item.ticker || "").toLowerCase();
       const company = String(item.company_name || "").toLowerCase();
@@ -172,7 +176,7 @@ function renderSpotGamma() {
     })
     .sort((a, b) => compareRows(a, b, sortKey));
 
-  $("spotgammaRows").innerHTML = rows.map(renderSpotGammaRow).join("");
+  $("candidateRows").innerHTML = rows.map(renderCandidateRow).join("");
 }
 
 function compareRows(a, b, key) {
@@ -182,7 +186,7 @@ function compareRows(a, b, key) {
   return numericValue(b[key]) - numericValue(a[key]);
 }
 
-function renderSpotGammaRow(item) {
+function renderCandidateRow(item) {
   return `
     <tr>
       <td class="tickerCell">${escapeHtml(item.ticker)}</td>
@@ -205,7 +209,7 @@ function renderSpotGammaRow(item) {
 }
 
 function renderTickerList() {
-  const query = $("gexbotSearch").value.trim().toLowerCase();
+  const query = $("tickerSearch").value.trim().toLowerCase();
   const tickers = state.tickers.filter((ticker) => String(ticker).toLowerCase().includes(query));
   $("tickerList").innerHTML = tickers
     .map((ticker) => {
@@ -231,9 +235,46 @@ function renderTickerDetail() {
 }
 
 function renderRawSummary() {
-  $("sourceStatus").textContent = pretty(state.summary.sources || {});
-  $("loadedFiles").textContent = pretty(state.loaded);
-  $("lastFetchResult").textContent = pretty(state.lastFetchResult);
+  $("sourceStatus").textContent = pretty(publicSourceStatus());
+  $("loadedFiles").textContent = pretty(publicLoadedFiles());
+  $("lastFetchResult").textContent = pretty(publicFetchResult());
+}
+
+function publicSourceStatus() {
+  const sources = state.summary.sources || {};
+  return {
+    "Stock Details": sources[sourceKeys.stock] || null,
+    "Squeezing Scanner": sources[sourceKeys.scanner] || null,
+  };
+}
+
+function publicFetchResult() {
+  if (!state.lastFetchResult || Object.keys(state.lastFetchResult).length === 0) {
+    return {};
+  }
+  return {
+    ok: Boolean(state.lastFetchResult.ok),
+    error: state.lastFetchResult.error || null,
+    sources: publicSourceStatus(),
+    generated_at: state.lastFetchResult.summary?.generated_at || null,
+  };
+}
+
+function publicLoadedFiles() {
+  const labels = {
+    summary: "Summary",
+    candidates: "Squeezing Scanner",
+    tickers: "Supported Tickers",
+    levels: "Levels Loaded",
+    stateGreeks: "State Greeks",
+    orderflow: "Orderflow Loaded",
+  };
+  return Object.fromEntries(
+    Object.entries(state.loaded).map(([key, value]) => [
+      labels[key] || key,
+      { ok: value.ok, error: value.error || null },
+    ]),
+  );
 }
 
 function badge(label, value) {
@@ -286,9 +327,9 @@ document.querySelectorAll(".tab").forEach((button) => {
 });
 
 $("themeButton").addEventListener("click", toggleTheme);
-$("spotgammaSearch").addEventListener("input", renderSpotGamma);
-$("spotgammaSort").addEventListener("change", renderSpotGamma);
-$("gexbotSearch").addEventListener("input", renderTickerList);
+$("candidateSearch").addEventListener("input", renderCandidates);
+$("candidateSort").addEventListener("change", renderCandidates);
+$("tickerSearch").addEventListener("input", renderTickerList);
 $("reloadButton").addEventListener("click", loadData);
 $("fetchButton").addEventListener("click", fetchLiveData);
 $("tickerList").addEventListener("click", (event) => {

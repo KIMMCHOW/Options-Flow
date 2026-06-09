@@ -273,7 +273,7 @@ def run_serve(settings: Settings, host: str = "127.0.0.1", port: int = 8765) -> 
     handler_class = partial(OptionsDataRequestHandler, directory=str(settings.root_dir))
     server = ThreadingHTTPServer((host, port), handler_class)
     print(f"Options Data Viewer: http://{host}:{port}/")
-    print("POST /api/fetch-all will run a real Gexbot + SpotGamma fetch.")
+    print("POST /api/fetch-all will run a real live data fetch.")
     try:
         server.serve_forever()
     finally:

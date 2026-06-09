@@ -21,44 +21,40 @@
 
     <main>
       <section class="statusBar" aria-label="Source status">
-        <div id="gexbotStatus" class="statusPill">Gexbot: loading</div>
-        <div id="spotgammaStatus" class="statusPill">SpotGamma: loading</div>
+        <div id="stockStatus" class="statusPill">Stock Details: loading</div>
+        <div id="candidateStatus" class="statusPill">Squeezing Scanner: loading</div>
         <div id="lastAction" class="statusText">Ready</div>
       </section>
 
       <section class="metrics" aria-label="Data summary">
         <article>
-          <span>SpotGamma</span>
-          <strong id="spotgammaCount">0</strong>
-          <small>Squeeze Candidates</small>
+          <span>Squeezing Scanner</span>
+          <strong id="candidateCount">0</strong>
         </article>
         <article>
-          <span>Gexbot</span>
-          <strong id="gexbotTickerCount">0</strong>
-          <small>Supported Tickers</small>
+          <span>Supported Tickers</span>
+          <strong id="tickerCount">0</strong>
         </article>
         <article>
-          <span>Gexbot</span>
-          <strong id="gexbotLevelCount">0</strong>
-          <small>Levels Loaded</small>
+          <span>Levels Loaded</span>
+          <strong id="levelCount">0</strong>
         </article>
         <article>
-          <span>Gexbot</span>
-          <strong id="gexbotOrderflowCount">0</strong>
-          <small>Orderflow Loaded</small>
+          <span>Orderflow Loaded</span>
+          <strong id="orderflowCount">0</strong>
         </article>
       </section>
 
       <nav class="tabs" aria-label="Views">
-        <button class="tab active" data-tab="spotgamma">SpotGamma</button>
-        <button class="tab" data-tab="gexbot">Gexbot</button>
+        <button class="tab active" data-tab="candidates">Squeezing Scanner</button>
+        <button class="tab" data-tab="stockDetails">Stock Details</button>
         <button class="tab" data-tab="raw">Raw Summary</button>
       </nav>
 
-      <section id="spotgamma" class="panel active">
+      <section id="candidates" class="panel active">
         <div class="toolbar">
-          <input id="spotgammaSearch" type="search" placeholder="Search ticker or company" />
-          <select id="spotgammaSort" aria-label="Sort SpotGamma candidates">
+          <input id="candidateSearch" type="search" placeholder="Search ticker or company" />
+          <select id="candidateSort" aria-label="Sort squeezing scanner">
             <option value="ticker">Ticker</option>
             <option value="options_implied_move">Options Implied Move</option>
             <option value="iv_rank">IV Rank</option>
@@ -90,15 +86,15 @@
                 <th>Implied Move</th>
               </tr>
             </thead>
-            <tbody id="spotgammaRows"></tbody>
+            <tbody id="candidateRows"></tbody>
           </table>
         </div>
       </section>
 
-      <section id="gexbot" class="panel">
+      <section id="stockDetails" class="panel">
         <div class="split">
           <aside class="tickerPane">
-            <input id="gexbotSearch" type="search" placeholder="Search ticker" />
+            <input id="tickerSearch" type="search" placeholder="Search ticker" />
             <div id="tickerList" class="tickerList"></div>
           </aside>
           <section class="detailPane">
