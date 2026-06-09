@@ -318,10 +318,7 @@ td.number {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   gap: 14px;
-  align-items: stretch;
-  height: calc(100vh - 372px);
-  min-height: 520px;
-  overflow: hidden;
+  align-items: start;
 }
 
 .tickerPane,
@@ -334,10 +331,8 @@ td.number {
 
 .tickerPane {
   padding: 12px;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
+  position: sticky;
+  top: 16px;
 }
 
 .tickerPane input {
@@ -350,10 +345,6 @@ td.number {
   display: grid;
   align-content: start;
   gap: 6px;
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  padding-right: 2px;
 }
 
 .tickerList button {
@@ -375,8 +366,6 @@ td.number {
 
 .detailPane {
   padding: 14px;
-  min-height: 0;
-  overflow: auto;
 }
 
 .detailHeader {
