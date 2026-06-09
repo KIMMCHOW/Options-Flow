@@ -4,5 +4,8 @@
   "scripts": {
     "typecheck": "node --check app.js",
     "build": "node --check app.js"
+  },
+  "dependencies": {
+    "echarts": "^5.5.1"
   }
 }

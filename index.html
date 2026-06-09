@@ -120,13 +120,25 @@
               <div class="gammaHeader">
                 <div>
                   <h3 id="gammaTitle">Gamma Ladder / GEX Proxy</h3>
-                  <p class="mutedLine">STATE GREEKS mini_contracts model. Positive values plot upward, negative values downward.</p>
+                  <p class="mutedLine">Interactive mini_contracts model with zoom, pan, tooltip, mark lines, bars, and cumulative proxy line.</p>
                 </div>
                 <div id="gammaMetrics" class="gammaMetrics"></div>
               </div>
+              <div id="gammaSummaryCards" class="gammaSummaryCards"></div>
               <div class="chartToolbar">
-                <label for="gammaZoom">Data Zoom</label>
-                <select id="gammaZoom" aria-label="Gamma ladder data zoom">
+                <label class="checkControl"><input id="showSpotLine" type="checkbox" checked /> Spot</label>
+                <label class="checkControl"><input id="showZeroGammaLine" type="checkbox" checked /> Zero Gamma</label>
+                <label class="checkControl"><input id="showMajorLines" type="checkbox" checked /> Major Levels</label>
+                <label class="checkControl"><input id="showOrderflowLines" type="checkbox" /> Orderflow Lines</label>
+                <label class="checkControl"><input id="showWallLines" type="checkbox" /> Call/Put Walls</label>
+                <label class="checkControl"><input id="smoothGammaLine" type="checkbox" checked /> Smooth Line</label>
+                <label for="gammaBarMode">Bar Mode</label>
+                <select id="gammaBarMode" aria-label="Gamma bar mode">
+                  <option value="current">Current Value</option>
+                  <option value="absolute">Absolute Value</option>
+                </select>
+                <label for="gammaZoom">Focus</label>
+                <select id="gammaZoom" aria-label="Gamma ladder focus range">
                   <option value="all">All strikes</option>
                   <option value="near" selected>Near spot</option>
                   <option value="top">Top absolute</option>
@@ -203,6 +215,7 @@
       </section>
     </main>
 
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>

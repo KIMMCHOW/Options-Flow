@@ -34,6 +34,7 @@ const state = {
 };
 
 const $ = (id) => document.getElementById(id);
+let gammaChartInstance = null;
 
 /**
  * @typedef {Object} GammaLadderRow
@@ -82,6 +83,8 @@ function toggleTheme() {
   document.documentElement.dataset.theme = next;
   localStorage.setItem("options-viewer-theme", next);
   renderThemeButton();
+  disposeGammaChart();
+  renderGammaLadder(state.selectedModel);
 }
 
 function renderThemeButton() {
@@ -356,6 +359,11 @@ function buildGammaLadderModel(raw, levelsRaw, spot) {
     ? raw.mini_contracts.map((row) => contractToGammaRow(row, spot)).filter(Boolean)
     : [];
   rows.sort((a, b) => a.strike - b.strike);
+  let cumulative = 0;
+  for (const row of rows) {
+    cumulative += row.current_value;
+    row.cumulative_value = cumulative;
+  }
 
   const positive = rows.filter((item) => item.current_value > 0);
   const negative = rows.filter((item) => item.current_value < 0);
@@ -391,19 +399,24 @@ function contractToGammaRow(row, spot) {
     return null;
   }
   const strike = numberOrNull(row[0]);
-  const currentValue = numberOrNull(row[3]);
-  if (strike === null || currentValue === null) {
+  const currentNumber = numberOrNull(row[3]);
+  if (strike === null) {
     return null;
   }
+  const currentValue = currentNumber ?? 0;
   const distance = spot === null ? null : strike - spot;
   return {
     strike,
     current_value: currentValue,
+    current_value_raw: currentNumber,
+    cumulative_value: 0,
     abs_value: Math.abs(currentValue),
     side: currentValue > 0 ? "positive" : currentValue < 0 ? "negative" : "neutral",
     distance_from_spot: distance,
+    distance_from_spot_percent: distance === null || !spot ? null : distance / spot * 100,
     distance_percent: distance === null || !spot ? null : distance / spot * 100,
     lookback_values: Array.isArray(row[4]) ? row[4] : [],
+    raw: row,
     raw_row: row,
   };
 }
@@ -440,7 +453,9 @@ function renderGammaLadder(model) {
   $("gammaTitle").textContent = model ? `${model.ticker} Gamma Ladder / GEX Proxy` : "Gamma Ladder / GEX Proxy";
   if (!ladder || ladder.rows.length === 0) {
     $("gammaMetrics").innerHTML = "";
+    $("gammaSummaryCards").innerHTML = "";
     $("gammaChart").innerHTML = empty("No gamma ladder data.");
+    disposeGammaChart();
     return;
   }
 
@@ -453,114 +468,378 @@ function renderGammaLadder(model) {
     metricBadge("Short", formatPrice(ladder.major_short_gamma)),
   ].join("");
 
-  $("gammaChart").innerHTML = renderGammaSvg(model, ladder, $("gammaZoom").value);
+  renderGammaSummaryCards(model, ladder);
+  renderInteractiveGammaChart(model, ladder);
 }
 
-function renderGammaSvg(model, ladder, zoomMode) {
-  const rows = filterGammaRows(ladder.rows, model.spot, zoomMode);
-  if (rows.length === 0) {
-    return empty("No gamma ladder data in this zoom range.");
+function renderGammaSummaryCards(model, ladder) {
+  const metrics = ladder.metrics || {};
+  $("gammaSummaryCards").innerHTML = [
+    metricCard("Ticker", model.ticker),
+    metricCard("Spot", formatPrice(model.spot)),
+    metricCard("Zero Gamma", formatPrice(ladder.zero_gamma)),
+    metricCard("Major Long Gamma", formatPrice(ladder.major_long_gamma)),
+    metricCard("Major Short Gamma", formatPrice(ladder.major_short_gamma)),
+    metricCard("Net Ladder Value", formatCompact(metrics.net_gamma), null, negativeClass(metrics.net_gamma)),
+    metricCard("Positive Sum", formatCompact(metrics.positive_gamma)),
+    metricCard("Negative Sum", formatCompact(metrics.negative_gamma), null, negativeClass(metrics.negative_gamma)),
+    metricCard("Top Positive Strike", formatPrice(ladder.top_positive?.[0]?.strike)),
+    metricCard("Top Negative Strike", formatPrice(ladder.top_negative?.[0]?.strike)),
+  ].join("");
+}
+
+function renderInteractiveGammaChart(model, ladder) {
+  if (!window.echarts) {
+    $("gammaChart").innerHTML = empty("Interactive chart library did not load.");
+    disposeGammaChart();
+    return;
   }
 
-  const width = 980;
-  const height = 380;
-  const margin = { top: 28, right: 38, bottom: 42, left: 64 };
-  const chartWidth = width - margin.left - margin.right;
-  const chartHeight = height - margin.top - margin.bottom;
+  const chartElement = $("gammaChart");
+  if (!gammaChartInstance) {
+    chartElement.innerHTML = "";
+    gammaChartInstance = echarts.init(chartElement, document.documentElement.dataset.theme === "dark" ? "dark" : null);
+  }
+
+  const controls = gammaChartControls();
+  const rows = ladder.rows;
+  const barMode = controls.barMode;
+  const barData = rows.map((item) => [item.strike, barMode === "absolute" ? item.abs_value : item.current_value, item]);
+  const lineData = rows.map((item) => [item.strike, item.cumulative_value, item]);
   const minStrike = Math.min(...rows.map((item) => item.strike));
   const maxStrike = Math.max(...rows.map((item) => item.strike));
-  const maxAbs = Math.max(...rows.map((item) => item.abs_value), 1);
-  const zeroY = margin.top + chartHeight / 2;
-  const barWidth = Math.max(2, Math.min(12, (chartWidth / Math.max(rows.length, 1)) * 0.58));
-  const topAbs = new Map(ladder.top_absolute.slice(0, 3).map((item, index) => [item.strike, index]));
+  const initialZoom = gammaInitialZoom(rows, model.spot, $("gammaZoom").value);
+  const markLines = buildGammaMarkLines(model, ladder, controls);
+  const chartMarkLines = [
+    {
+      name: "0 Line",
+      yAxis: 0,
+      lineStyle: { color: "rgba(255,255,255,0.42)", type: "dotted" },
+      label: { color: "#9ca3af", formatter: "0" },
+    },
+    ...markLines.map((line) => ({
+      name: line.label,
+      xAxis: line.value,
+      lineStyle: { color: line.color, type: line.type || "dashed" },
+      label: { color: line.color },
+    })),
+  ];
+  const topLabels = buildTopStrikeMarkPoints(ladder);
 
-  const xScale = (strike) => {
-    if (maxStrike === minStrike) {
-      return margin.left + chartWidth / 2;
-    }
-    return margin.left + ((strike - minStrike) / (maxStrike - minStrike)) * chartWidth;
-  };
-  const yScale = (value) => zeroY - (value / maxAbs) * (chartHeight / 2 - 18);
-
-  const bars = rows.map((item) => {
-    const x = xScale(item.strike);
-    const y = yScale(item.current_value);
-    const rectY = Math.min(y, zeroY);
-    const rectHeight = Math.max(1, Math.abs(zeroY - y));
-    const cssClass = item.current_value >= 0 ? "svgBar positiveGamma" : "svgBar negativeGamma";
-    const title = [
-      `strike: ${formatPrice(item.strike)}`,
-      `current_value: ${formatCompact(item.current_value)}`,
-      `distance from spot: ${formatPrice(item.distance_from_spot)}`,
-      `distance percent: ${formatPercent(item.distance_percent)}`,
-      `lookback_values: ${JSON.stringify(item.lookback_values)}`,
-    ].join("\n");
-    const topIndex = topAbs.get(item.strike);
-    const labelOffset = Number.isInteger(topIndex) ? topIndex * 13 : 0;
-    const label = topAbs.has(item.strike)
-      ? `<circle cx="${x}" cy="${rectY - 6 - labelOffset}" r="3.5" class="topMarker"><title>Top absolute strike</title></circle>
-         <text x="${x}" y="${rectY - 10 - labelOffset}" class="topLabel">${formatPrice(item.strike)}</text>`
-      : "";
-    return `
-      <rect class="${cssClass}" x="${x - barWidth / 2}" y="${rectY}" width="${barWidth}" height="${rectHeight}">
-        <title>${escapeHtml(title)}</title>
-      </rect>
-      ${label}
-    `;
-  }).join("");
-
-  const levelLines = [
-    chartLine("Spot", model.spot, "spotLine", xScale, minStrike, maxStrike, margin, chartHeight, 0),
-    chartLine("Zero", ladder.zero_gamma, "zeroGammaLine", xScale, minStrike, maxStrike, margin, chartHeight, 1),
-    chartLine("Major +", ladder.major_positive, "majorPositiveLine", xScale, minStrike, maxStrike, margin, chartHeight, 2),
-    chartLine("Major -", ladder.major_negative, "majorNegativeLine", xScale, minStrike, maxStrike, margin, chartHeight, 3),
-    chartLine("Long", ladder.major_long_gamma, "majorLongLine", xScale, minStrike, maxStrike, margin, chartHeight, 4),
-    chartLine("Short", ladder.major_short_gamma, "majorShortLine", xScale, minStrike, maxStrike, margin, chartHeight, 5),
-  ].filter(Boolean).join("");
-
-  return `
-    <svg class="gammaSvg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(model.ticker)} gamma ladder chart">
-      <line class="zeroAxis" x1="${margin.left}" y1="${zeroY}" x2="${width - margin.right}" y2="${zeroY}"></line>
-      <line class="chartAxis" x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}"></line>
-      <line class="chartAxis" x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}"></line>
-      <text class="axisLabel" x="${margin.left}" y="${height - 12}">${formatPrice(minStrike)}</text>
-      <text class="axisLabel end" x="${width - margin.right}" y="${height - 12}">${formatPrice(maxStrike)}</text>
-      <text class="axisLabel" x="8" y="${margin.top + 8}">+${formatCompact(maxAbs)}</text>
-      <text class="axisLabel" x="8" y="${height - margin.bottom}">-${formatCompact(maxAbs)}</text>
-      ${bars}
-      ${levelLines}
-    </svg>
-  `;
+  gammaChartInstance.setOption({
+    backgroundColor: "transparent",
+    animation: false,
+    color: ["#14b8a6", "#22c55e"],
+    grid: { left: 62, right: 74, top: 54, bottom: 86, containLabel: true },
+    tooltip: {
+      trigger: "axis",
+      axisPointer: { type: "cross", snap: true },
+      confine: true,
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.16)",
+      backgroundColor: "rgba(5,6,7,0.94)",
+      textStyle: { color: "#f8fafc", fontSize: 12 },
+      extraCssText: "max-width:360px;white-space:normal;",
+      formatter: (params) => gammaTooltip(params, model, ladder, markLines),
+    },
+    legend: {
+      top: 12,
+      textStyle: { color: axisLabelColor() },
+      data: ["Gamma Proxy Line", "Strike Gamma Bars"],
+    },
+    toolbox: {
+      right: 12,
+      top: 8,
+      feature: {
+        restore: {},
+        saveAsImage: { backgroundColor: "#050607" },
+      },
+      iconStyle: { borderColor: axisLabelColor() },
+    },
+    xAxis: {
+      type: "value",
+      name: "Strike",
+      min: minStrike,
+      max: maxStrike,
+      axisLabel: { color: axisLabelColor(), formatter: (value) => formatStrike(value) },
+      axisLine: { lineStyle: { color: gridLineColor() } },
+      splitLine: { show: true, lineStyle: { color: gridLineColor() } },
+    },
+    yAxis: [
+      {
+        type: "value",
+        name: "Gamma Proxy Line",
+        axisLabel: { color: axisLabelColor(), formatter: formatCompact },
+        axisLine: { lineStyle: { color: "#14b8a6" } },
+        splitLine: { show: true, lineStyle: { color: gridLineColor() } },
+      },
+      {
+        type: "value",
+        name: "Gamma Proxy Bars",
+        axisLabel: { color: axisLabelColor(), formatter: formatCompact },
+        axisLine: { lineStyle: { color: "#a78bfa" } },
+        splitLine: { show: false },
+      },
+    ],
+    dataZoom: [
+      {
+        type: "inside",
+        xAxisIndex: 0,
+        filterMode: "none",
+        zoomOnMouseWheel: true,
+        moveOnMouseMove: true,
+        moveOnMouseWheel: false,
+      },
+      {
+        type: "slider",
+        xAxisIndex: 0,
+        filterMode: "none",
+        bottom: 18,
+        height: 28,
+        startValue: initialZoom.startValue,
+        endValue: initialZoom.endValue,
+        borderColor: gridLineColor(),
+        textStyle: { color: axisLabelColor() },
+        fillerColor: "rgba(20,184,166,0.18)",
+        handleStyle: { color: "#14b8a6" },
+      },
+    ],
+    series: [
+      {
+        name: "Gamma Proxy Line",
+        type: "line",
+        yAxisIndex: 0,
+        data: lineData,
+        smooth: controls.smoothLine,
+        showSymbol: false,
+        symbolSize: 4,
+        lineStyle: { width: 2.2, color: "#14b8a6" },
+        markLine: {
+          symbol: "none",
+          silent: false,
+          label: { color: "#e5e7eb", formatter: ({ name, value }) => `${name} ${formatStrike(value)}` },
+          lineStyle: { type: "dashed", width: 1.3 },
+          data: chartMarkLines,
+        },
+      },
+      {
+        name: "Strike Gamma Bars",
+        type: "bar",
+        yAxisIndex: 1,
+        data: barData,
+        barMinWidth: 2,
+        barMaxWidth: 12,
+        itemStyle: {
+          color: (params) => {
+            const row = params.data?.[2];
+            return row?.current_value >= 0 ? "#22c55e" : "#7c3aed";
+          },
+        },
+        markPoint: {
+          symbolSize: 42,
+          label: { color: "#050607", fontWeight: 800, formatter: ({ name }) => name },
+          itemStyle: { color: "#f59e0b" },
+          data: topLabels,
+        },
+      },
+    ],
+  }, true);
 }
 
-function filterGammaRows(rows, spot, zoomMode) {
-  if (zoomMode === "near" && spot !== null) {
-    return rows
+function disposeGammaChart() {
+  if (gammaChartInstance) {
+    gammaChartInstance.dispose();
+    gammaChartInstance = null;
+  }
+}
+
+function gammaChartControls() {
+  return {
+    showSpot: $("showSpotLine").checked,
+    showZeroGamma: $("showZeroGammaLine").checked,
+    showMajorLines: $("showMajorLines").checked,
+    showOrderflowLines: $("showOrderflowLines").checked,
+    showWallLines: $("showWallLines").checked,
+    smoothLine: $("smoothGammaLine").checked,
+    barMode: $("gammaBarMode").value,
+  };
+}
+
+function gammaInitialZoom(rows, spot, mode) {
+  const strikes = rows.map((item) => item.strike);
+  if (!strikes.length) {
+    return { startValue: 0, endValue: 0 };
+  }
+  if (mode === "near" && spot !== null) {
+    const near = rows
       .slice()
       .sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot))
-      .slice(0, 60)
-      .sort((a, b) => a.strike - b.strike);
+      .slice(0, 64)
+      .map((item) => item.strike);
+    return { startValue: Math.min(...near), endValue: Math.max(...near) };
   }
-  if (zoomMode === "top") {
-    return rows
+  if (mode === "top") {
+    const top = rows
       .slice()
       .sort((a, b) => b.abs_value - a.abs_value)
-      .slice(0, 60)
-      .sort((a, b) => a.strike - b.strike);
+      .slice(0, 64)
+      .map((item) => item.strike);
+    return { startValue: Math.min(...top), endValue: Math.max(...top) };
   }
-  return rows;
+  return { startValue: Math.min(...strikes), endValue: Math.max(...strikes) };
 }
 
-function chartLine(label, value, cssClass, xScale, minStrike, maxStrike, margin, chartHeight, labelIndex) {
-  const number = numberOrNull(value);
-  if (number === null || number < minStrike || number > maxStrike) {
+function buildGammaMarkLines(model, ladder, controls) {
+  const levels = model.levels?.raw || {};
+  const orderflow = model.orderflow || {};
+  const lines = [];
+  const add = (label, value, color, group, type = "dashed") => {
+    const number = numberOrNull(value);
+    if (number === null) {
+      return;
+    }
+    lines.push({ label, value: number, color, group, type });
+  };
+
+  if (controls.showSpot) {
+    add("Spot", model.spot, "#22c55e", "spot", "solid");
+    add("Last Close", levels.previous_close, "#22c55e", "spot");
+  }
+  if (controls.showZeroGamma) {
+    add("Zero Gamma", ladder.zero_gamma, "#f59e0b", "zero");
+  }
+  if (controls.showMajorLines) {
+    add("Major Long Gamma", ladder.major_long_gamma, "#38bdf8", "major");
+    add("Major Short Gamma", ladder.major_short_gamma, "#a78bfa", "major");
+    add("Major Positive", ladder.major_positive, "#10b981", "major");
+    add("Major Negative", ladder.major_negative, "#fb7185", "major");
+  }
+  if (controls.showOrderflowLines) {
+    add("0DTE Major Long Gamma", orderflow.z_mlgamma, "#38bdf8", "orderflow");
+    add("0DTE Major Short Gamma", orderflow.z_msgamma, "#a78bfa", "orderflow");
+    add("1DTE+ Major Long Gamma", orderflow.o_mlgamma, "#0ea5e9", "orderflow");
+    add("1DTE+ Major Short Gamma", orderflow.o_msgamma, "#c084fc", "orderflow");
+  }
+  if (controls.showWallLines) {
+    add("0DTE Major Call", orderflow.zero_mcall, "#22c55e", "walls");
+    add("0DTE Major Put", orderflow.zero_mput, "#ef4444", "walls");
+    add("1DTE+ Major Call", orderflow.one_mcall, "#84cc16", "walls");
+    add("1DTE+ Major Put", orderflow.one_mput, "#fb7185", "walls");
+    add("MPos Vol", levels.mpos_vol, "#10b981", "walls");
+    add("MPos OI", levels.mpos_oi, "#34d399", "walls");
+    add("MNeg Vol", levels.mneg_vol, "#f43f5e", "walls");
+    add("MNeg OI", levels.mneg_oi, "#fb7185", "walls");
+  }
+
+  return dedupeMarkLines(lines);
+}
+
+function dedupeMarkLines(lines) {
+  const seen = new Set();
+  return lines.filter((line) => {
+    const key = `${line.label}:${line.value}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}
+
+function buildTopStrikeMarkPoints(ladder) {
+  return ladder.top_absolute.slice(0, 3).map((item, index) => ({
+    name: `#${index + 1}`,
+    coord: [item.strike, item.current_value],
+    value: item.current_value,
+  }));
+}
+
+function gammaTooltip(params, model, ladder, markLines) {
+  const row = findTooltipGammaRow(params);
+  if (!row) {
     return "";
   }
-  const x = xScale(number);
+  const nearby = nearbyMarkLines(row.strike, ladder.rows, markLines);
+  const valueClass = row.current_value < 0 ? "tooltipNegative" : "tooltipPositive";
+  const lookback = row.lookback_values.length
+    ? row.lookback_values.map((value, index) => `<div><span>t-${index + 1}</span><b>${formatCompact(value)}</b></div>`).join("")
+    : '<div><span>Lookback</span><b>N/A</b></div>';
+  const nearbyLines = nearby.length
+    ? nearby.map((line) => `<div><span>${escapeHtml(line.label)}</span><b>${formatStrike(line.value)}</b></div>`).join("")
+    : '<div><span>None</span><b>-</b></div>';
+
   return `
-    <line class="${cssClass}" x1="${x}" y1="${margin.top}" x2="${x}" y2="${margin.top + chartHeight}"></line>
-    <text class="${cssClass}Label lineLabel" x="${x + 4}" y="${margin.top + 14 + labelIndex * 13}">${escapeHtml(label)}</text>
+    <div class="gammaTooltip">
+      <h4>${escapeHtml(model.ticker)} @ ${formatStrike(row.strike)}</h4>
+      <div><span>Spot</span><b>${formatPrice(model.spot)}</b></div>
+      <div><span>Distance from Spot</span><b>${formatPrice(row.distance_from_spot)}</b></div>
+      <div><span>Distance %</span><b>${formatPercent(row.distance_from_spot_percent)}</b></div>
+      <div><span>Strike Gamma Value</span><b class="${valueClass}">${formatCompact(row.current_value_raw ?? row.current_value)}</b></div>
+      <div><span>Cumulative Gamma Proxy</span><b class="${negativeClass(row.cumulative_value)}">${formatCompact(row.cumulative_value)}</b></div>
+      <hr />
+      <strong>Lookback Values</strong>
+      ${lookback}
+      <hr />
+      <strong>Nearby Lines</strong>
+      ${nearbyLines}
+    </div>
   `;
+}
+
+function findTooltipGammaRow(params) {
+  for (const param of params || []) {
+    const row = param.data?.[2];
+    if (row && typeof row === "object") {
+      return row;
+    }
+  }
+  return null;
+}
+
+function nearbyMarkLines(strike, rows, markLines) {
+  const threshold = averageStrikeStep(rows) * 1.5 || 1;
+  return markLines
+    .filter((line) => Math.abs(line.value - strike) <= threshold)
+    .sort((a, b) => Math.abs(a.value - strike) - Math.abs(b.value - strike))
+    .slice(0, 8);
+}
+
+function averageStrikeStep(rows) {
+  if (rows.length < 2) {
+    return 1;
+  }
+  const steps = [];
+  for (let index = 1; index < rows.length; index += 1) {
+    const step = Math.abs(rows[index].strike - rows[index - 1].strike);
+    if (step > 0) {
+      steps.push(step);
+    }
+  }
+  if (!steps.length) {
+    return 1;
+  }
+  return steps.reduce((sum, step) => sum + step, 0) / steps.length;
+}
+
+function axisLabelColor() {
+  return document.documentElement.dataset.theme === "dark" ? "#9ca3af" : "#667085";
+}
+
+function gridLineColor() {
+  return document.documentElement.dataset.theme === "dark" ? "rgba(255,255,255,0.12)" : "rgba(15,23,42,0.12)";
+}
+
+function zoomToStrike(level) {
+  if (!gammaChartInstance || numberOrNull(level) === null) {
+    return;
+  }
+  const ladder = state.selectedModel?.gamma_ladder;
+  const step = ladder ? averageStrikeStep(ladder.rows) : 1;
+  gammaChartInstance.dispatchAction({
+    type: "dataZoom",
+    startValue: level - step * 12,
+    endValue: level + step * 12,
+  });
 }
 
 function renderTopGammaTables(model) {
@@ -860,6 +1139,16 @@ function formatPrice(value) {
   return formatNumber(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+function formatStrike(value) {
+  const number = numberOrNull(value);
+  if (number === null) {
+    return "-";
+  }
+  return Number.isInteger(number)
+    ? formatNumber(number, { maximumFractionDigits: 0 })
+    : formatNumber(number, { maximumFractionDigits: 2 });
+}
+
 function formatPercent(value) {
   const number = numberOrNull(value);
   return number === null ? "-" : `${number.toFixed(2)}%`;
@@ -947,7 +1236,18 @@ $("candidateDate").addEventListener("change", async (event) => {
   renderRawSummary();
 });
 $("tickerSearch").addEventListener("input", renderTickerList);
-$("gammaZoom").addEventListener("change", () => renderGammaLadder(state.selectedModel));
+[
+  "gammaZoom",
+  "showSpotLine",
+  "showZeroGammaLine",
+  "showMajorLines",
+  "showOrderflowLines",
+  "showWallLines",
+  "smoothGammaLine",
+  "gammaBarMode",
+].forEach((id) => {
+  $(id).addEventListener("change", () => renderGammaLadder(state.selectedModel));
+});
 $("reloadButton").addEventListener("click", loadData);
 $("fetchButton").addEventListener("click", fetchLiveData);
 $("tickerList").addEventListener("click", (event) => {
@@ -966,6 +1266,9 @@ document.addEventListener("click", (event) => {
       $("lastAction").textContent = `Copy failed: ${error.message}`;
     });
   }
+});
+window.addEventListener("resize", () => {
+  gammaChartInstance?.resize();
 });
 
 initTheme();
