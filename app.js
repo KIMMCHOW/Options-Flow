@@ -503,12 +503,10 @@ function renderInteractiveGammaChart(model, ladder) {
 
   const controls = gammaChartControls();
   const rows = ladder.rows;
-  const barMode = controls.barMode;
-  const barData = rows.map((item) => [item.strike, barMode === "absolute" ? item.abs_value : item.current_value, item]);
+  const barData = rows.map((item) => [item.strike, item.current_value, item]);
   const lineData = rows.map((item) => [item.strike, item.cumulative_value, item]);
   const minStrike = Math.min(...rows.map((item) => item.strike));
   const maxStrike = Math.max(...rows.map((item) => item.strike));
-  const initialZoom = gammaInitialZoom(rows, model.spot, $("gammaZoom").value);
   const markLines = buildGammaMarkLines(model, ladder, controls);
   const chartMarkLines = [
     {
@@ -604,8 +602,8 @@ function renderInteractiveGammaChart(model, ladder) {
         filterMode: "none",
         bottom: 18,
         height: 28,
-        startValue: initialZoom.startValue,
-        endValue: initialZoom.endValue,
+        startValue: minStrike,
+        endValue: maxStrike,
         borderColor: gridLineColor(),
         textStyle: { color: axisLabelColor() },
         fillerColor: "rgba(20,184,166,0.18)",
@@ -671,32 +669,7 @@ function gammaChartControls() {
     showWallLines: $("showWallLines").checked,
     showGammaProxyLine: $("showGammaProxyLine").checked,
     smoothLine: $("smoothGammaLine").checked,
-    barMode: $("gammaBarMode").value,
   };
-}
-
-function gammaInitialZoom(rows, spot, mode) {
-  const strikes = rows.map((item) => item.strike);
-  if (!strikes.length) {
-    return { startValue: 0, endValue: 0 };
-  }
-  if (mode === "near" && spot !== null) {
-    const near = rows
-      .slice()
-      .sort((a, b) => Math.abs(a.strike - spot) - Math.abs(b.strike - spot))
-      .slice(0, 64)
-      .map((item) => item.strike);
-    return { startValue: Math.min(...near), endValue: Math.max(...near) };
-  }
-  if (mode === "top") {
-    const top = rows
-      .slice()
-      .sort((a, b) => b.abs_value - a.abs_value)
-      .slice(0, 64)
-      .map((item) => item.strike);
-    return { startValue: Math.min(...top), endValue: Math.max(...top) };
-  }
-  return { startValue: Math.min(...strikes), endValue: Math.max(...strikes) };
 }
 
 function buildGammaMarkLines(model, ladder, controls) {
@@ -1251,7 +1224,6 @@ $("candidateDate").addEventListener("change", async (event) => {
 });
 $("tickerSearch").addEventListener("input", renderTickerList);
 [
-  "gammaZoom",
   "showKeyLines",
   "showSpotLine",
   "showZeroGammaLine",
@@ -1260,7 +1232,6 @@ $("tickerSearch").addEventListener("input", renderTickerList);
   "showWallLines",
   "showGammaProxyLine",
   "smoothGammaLine",
-  "gammaBarMode",
 ].forEach((id) => {
   $(id).addEventListener("change", () => renderGammaLadder(state.selectedModel));
 });
