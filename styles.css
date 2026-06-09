@@ -439,39 +439,6 @@ td.number {
   overflow: hidden;
 }
 
-.gammaHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.gammaHeader h3,
-.gammaPanel .mutedLine {
-  color: #cbd5e1;
-}
-
-.gammaSummaryCards {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.gammaSummaryCards .metricCard {
-  min-height: 76px;
-  border-color: rgba(255, 255, 255, 0.12);
-  background: #0b1118;
-}
-
-.gammaSummaryCards .metricCard strong {
-  color: #f8fafc;
-  font-size: 17px;
-}
-
 .chartToolbar {
   display: flex;
   align-items: center;
@@ -510,13 +477,6 @@ td.number {
   min-width: 14px;
   accent-color: #14b8a6;
   margin: 0;
-}
-
-.gammaMetrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  justify-content: flex-end;
 }
 
 .gammaChart {
@@ -936,7 +896,6 @@ pre {
   .split,
   .jsonGrid,
   .cardGrid,
-  .gammaSummaryCards,
   .miniCardGrid,
   .tableGrid,
   .chartGrid,

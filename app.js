@@ -450,42 +450,13 @@ function renderLevelsCards(model) {
 
 function renderGammaLadder(model) {
   const ladder = model?.gamma_ladder;
-  $("gammaTitle").textContent = model ? `${model.ticker} Gamma Ladder / GEX Proxy` : "Gamma Ladder / GEX Proxy";
   if (!ladder || ladder.rows.length === 0) {
-    $("gammaMetrics").innerHTML = "";
-    $("gammaSummaryCards").innerHTML = "";
     $("gammaChart").innerHTML = empty("No gamma ladder data.");
     disposeGammaChart();
     return;
   }
 
-  const metrics = ladder.metrics || {};
-  $("gammaMetrics").innerHTML = [
-    metricBadge("Spot", formatPrice(model.spot)),
-    metricBadge("Zero", formatPrice(ladder.zero_gamma)),
-    metricBadge("Net", formatCompact(metrics.net_gamma), negativeClass(metrics.net_gamma)),
-    metricBadge("Long", formatPrice(ladder.major_long_gamma)),
-    metricBadge("Short", formatPrice(ladder.major_short_gamma)),
-  ].join("");
-
-  renderGammaSummaryCards(model, ladder);
   renderInteractiveGammaChart(model, ladder);
-}
-
-function renderGammaSummaryCards(model, ladder) {
-  const metrics = ladder.metrics || {};
-  $("gammaSummaryCards").innerHTML = [
-    metricCard("Ticker", model.ticker),
-    metricCard("Spot", formatPrice(model.spot)),
-    metricCard("Zero Gamma", formatPrice(ladder.zero_gamma)),
-    metricCard("Major Long Gamma", formatPrice(ladder.major_long_gamma)),
-    metricCard("Major Short Gamma", formatPrice(ladder.major_short_gamma)),
-    metricCard("Net Ladder Value", formatCompact(metrics.net_gamma), null, negativeClass(metrics.net_gamma)),
-    metricCard("Positive Sum", formatCompact(metrics.positive_gamma)),
-    metricCard("Negative Sum", formatCompact(metrics.negative_gamma), null, negativeClass(metrics.negative_gamma)),
-    metricCard("Top Positive Strike", formatPrice(ladder.top_positive?.[0]?.strike)),
-    metricCard("Top Negative Strike", formatPrice(ladder.top_negative?.[0]?.strike)),
-  ].join("");
 }
 
 function renderInteractiveGammaChart(model, ladder) {
@@ -661,7 +632,6 @@ function disposeGammaChart() {
 
 function gammaChartControls() {
   return {
-    showKeyLines: $("showKeyLines").checked,
     showSpot: $("showSpotLine").checked,
     showZeroGamma: $("showZeroGammaLine").checked,
     showMajorLines: $("showMajorLines").checked,
@@ -686,9 +656,6 @@ function buildGammaMarkLines(model, ladder, controls) {
   if (controls.showSpot) {
     add("Spot", model.spot, "#22c55e", "spot", "solid");
     add("Last Close", levels.previous_close, "#22c55e", "spot");
-  }
-  if (!controls.showKeyLines) {
-    return dedupeMarkLines(lines);
   }
   if (controls.showZeroGamma) {
     add("Zero Gamma", ladder.zero_gamma, "#f59e0b", "zero");
@@ -1065,10 +1032,6 @@ function metricCard(label, value, subvalue = null, className = "") {
   `;
 }
 
-function metricBadge(label, value, className = "") {
-  return `<span class="badge">${escapeHtml(label)}: <b class="${className}">${escapeHtml(value)}</b></span>`;
-}
-
 function badge(label, value) {
   return `<span class="badge">${label}: ${value == null ? "missing" : "loaded"}</span>`;
 }
@@ -1211,7 +1174,6 @@ $("candidateDate").addEventListener("change", async (event) => {
 });
 $("tickerSearch").addEventListener("input", renderTickerList);
 [
-  "showKeyLines",
   "showSpotLine",
   "showZeroGammaLine",
   "showMajorLines",
