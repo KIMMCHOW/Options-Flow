@@ -535,8 +535,6 @@ function renderInteractiveGammaChart(model, ladder) {
       },
     })),
   ];
-  const topLabels = buildTopStrikeMarkPoints(ladder);
-
   gammaChartInstance.setOption({
     backgroundColor: "transparent",
     animation: false,
@@ -622,7 +620,7 @@ function renderInteractiveGammaChart(model, ladder) {
         type: "line",
         yAxisIndex: 0,
         data: lineData,
-        smooth: controls.smoothLine,
+        smooth: true,
         showSymbol: false,
         symbolSize: 4,
         lineStyle: { width: 2.2, color: "#14b8a6" },
@@ -641,12 +639,6 @@ function renderInteractiveGammaChart(model, ladder) {
             const row = params.data?.[2];
             return row?.current_value >= 0 ? "#22c55e" : "#7c3aed";
           },
-        },
-        markPoint: {
-          symbolSize: 42,
-          label: { color: "#050607", fontWeight: 800, formatter: ({ name }) => name },
-          itemStyle: { color: "#f59e0b" },
-          data: topLabels,
         },
         markLine: {
           symbol: "none",
@@ -676,7 +668,6 @@ function gammaChartControls() {
     showOrderflowLines: $("showOrderflowLines").checked,
     showWallLines: $("showWallLines").checked,
     showGammaProxyLine: $("showGammaProxyLine").checked,
-    smoothLine: $("smoothGammaLine").checked,
   };
 }
 
@@ -741,14 +732,6 @@ function dedupeMarkLines(lines) {
   });
 }
 
-function buildTopStrikeMarkPoints(ladder) {
-  return ladder.top_absolute.slice(0, 3).map((item, index) => ({
-    name: `#${index + 1}`,
-    coord: [item.strike, item.current_value],
-    value: item.current_value,
-  }));
-}
-
 function gammaTooltip(params, model, ladder, markLines) {
   const row = findTooltipGammaRow(params);
   if (!row) {
@@ -756,9 +739,6 @@ function gammaTooltip(params, model, ladder, markLines) {
   }
   const nearby = nearbyMarkLines(row.strike, ladder.rows, markLines);
   const valueClass = row.current_value < 0 ? "tooltipNegative" : "tooltipPositive";
-  const lookback = row.lookback_values.length
-    ? row.lookback_values.map((value, index) => `<div><span>t-${index + 1}</span><b>${formatCompact(value)}</b></div>`).join("")
-    : '<div><span>Lookback</span><b>N/A</b></div>';
   const nearbyLines = nearby.length
     ? nearby.map((line) => `<div><span>${escapeHtml(line.label)}</span><b>${formatStrike(line.value)}</b></div>`).join("")
     : '<div><span>None</span><b>-</b></div>';
@@ -771,9 +751,6 @@ function gammaTooltip(params, model, ladder, markLines) {
       <div><span>Distance %</span><b>${formatPercent(row.distance_from_spot_percent)}</b></div>
       <div><span>Strike Gamma Value</span><b class="${valueClass}">${formatCompact(row.current_value_raw ?? row.current_value)}</b></div>
       <div><span>Cumulative Gamma Proxy</span><b class="${negativeClass(row.cumulative_value)}">${formatCompact(row.cumulative_value)}</b></div>
-      <hr />
-      <strong>Lookback Values</strong>
-      ${lookback}
       <hr />
       <strong>Nearby Lines</strong>
       ${nearbyLines}
@@ -1242,7 +1219,6 @@ $("tickerSearch").addEventListener("input", renderTickerList);
   "showOrderflowLines",
   "showWallLines",
   "showGammaProxyLine",
-  "smoothGammaLine",
 ].forEach((id) => {
   $(id).addEventListener("change", () => renderGammaLadder(state.selectedModel));
 });
