@@ -672,10 +672,6 @@ function gammaChartControls() {
 }
 
 function buildGammaMarkLines(model, ladder, controls) {
-  if (!controls.showKeyLines) {
-    return [];
-  }
-
   const levels = model.levels?.raw || {};
   const orderflow = model.orderflow || {};
   const lines = [];
@@ -690,6 +686,9 @@ function buildGammaMarkLines(model, ladder, controls) {
   if (controls.showSpot) {
     add("Spot", model.spot, "#22c55e", "spot", "solid");
     add("Last Close", levels.previous_close, "#22c55e", "spot");
+  }
+  if (!controls.showKeyLines) {
+    return dedupeMarkLines(lines);
   }
   if (controls.showZeroGamma) {
     add("Zero Gamma", ladder.zero_gamma, "#f59e0b", "zero");
