@@ -22,6 +22,7 @@ const state = {
   candidateHistory: [],
   selectedCandidateDate: "latest",
   tickers: [],
+  stockTickers: [],
   levels: {},
   stateGreeks: {},
   gexProxy: {},
@@ -125,7 +126,8 @@ async function loadData() {
   state.stateGreeks = stateGreeks || {};
   state.gexProxy = gexProxy || {};
   state.orderflow = orderflow || {};
-  state.selectedTicker = state.selectedTicker && state.tickers.includes(state.selectedTicker)
+  state.stockTickers = state.tickers.filter(hasStockDetailData);
+  state.selectedTicker = state.selectedTicker && state.stockTickers.includes(state.selectedTicker)
     ? state.selectedTicker
     : pickDefaultTicker();
 
@@ -194,7 +196,7 @@ function setBusy(isBusy) {
 
 function pickDefaultTicker() {
   const preferred = ["SPX", "SPY", "QQQ", "NVDA", "TSLA"];
-  return preferred.find((ticker) => state.tickers.includes(ticker)) || state.tickers[0] || null;
+  return preferred.find((ticker) => state.stockTickers.includes(ticker)) || state.stockTickers[0] || null;
 }
 
 function render() {
@@ -207,7 +209,7 @@ function render() {
 
 function renderMetrics() {
   $("candidateCount").textContent = state.candidates.length;
-  $("tickerCount").textContent = state.tickers.length;
+  $("tickerCount").textContent = state.stockTickers.length;
   $("levelCount").textContent = Object.keys(state.levels).length;
   $("orderflowCount").textContent = Object.keys(state.orderflow).length;
 
@@ -268,13 +270,25 @@ function renderCandidateRow(item) {
 
 function renderTickerList() {
   const query = $("tickerSearch").value.trim().toLowerCase();
-  const tickers = state.tickers.filter((ticker) => String(ticker).toLowerCase().includes(query));
-  $("tickerList").innerHTML = tickers
+  const tickers = state.stockTickers.filter((ticker) => String(ticker).toLowerCase().includes(query));
+  $("tickerList").innerHTML = tickers.length
+    ? tickers
     .map((ticker) => {
       const active = ticker === state.selectedTicker ? "active" : "";
       return `<button class="${active}" data-ticker="${escapeHtml(ticker)}">${escapeHtml(ticker)}</button>`;
     })
-    .join("");
+    .join("")
+    : empty("No loaded ticker data.");
+}
+
+function hasStockDetailData(ticker) {
+  return hasObjectData(state.levels[ticker])
+    || hasObjectData(state.stateGreeks[ticker])
+    || hasObjectData(state.orderflow[ticker]);
+}
+
+function hasObjectData(value) {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0);
 }
 
 function renderTickerDetail() {
