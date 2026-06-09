@@ -353,7 +353,7 @@ td.number {
   border-radius: 8px;
   background: var(--panel);
   color: var(--text);
-  text-align: left;
+  text-align: center;
   padding: 0 10px;
   font-weight: 750;
 }
@@ -374,6 +374,11 @@ td.number {
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 12px;
+  text-align: center;
+}
+
+.detailHeader > div:first-child {
+  flex: 1;
 }
 
 .dashboardSection,
@@ -384,9 +389,10 @@ td.number {
 .sectionHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 10px;
   margin-bottom: 8px;
+  text-align: center;
 }
 
 .cardGrid,
@@ -409,6 +415,10 @@ td.number {
   border-radius: 8px;
   background: var(--panel-soft);
   padding: 12px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
 }
 
 .metricCard span,
@@ -442,6 +452,7 @@ td.number {
 .chartToolbar {
   display: flex;
   align-items: center;
+  justify-content: center;
   flex-wrap: wrap;
   gap: 8px;
   padding: 12px;
@@ -461,6 +472,7 @@ td.number {
 .checkControl {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   min-height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -698,10 +710,11 @@ td.number {
 
 .badges {
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: center;
 }
 
 .badge {
+  text-align: center;
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 5px 9px;
