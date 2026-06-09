@@ -6,10 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from config.settings import SpotGammaSettings
-
-
-class SpotGammaError(Exception):
-    pass
+from spotgamma.client import SpotGammaError
 
 
 def _extract_candidates(payload: Any) -> List[Dict[str, Any]]:
@@ -30,7 +27,7 @@ def load_manual_candidates(settings: SpotGammaSettings) -> Dict[str, Any]:
         if settings.session_file is not None and not Path(settings.session_file).exists():
             raise SpotGammaError("SpotGamma session file not found")
         if settings.mode in {"http", "authenticated_http"}:
-            raise SpotGammaError("SpotGamma authenticated HTTP mode is a placeholder; use manual mode for now")
+            raise SpotGammaError("SpotGamma authenticated HTTP mode should be handled by the HTTP client")
         if settings.mode in {"playwright", "browser"}:
             raise SpotGammaError("SpotGamma Playwright browser export mode is a placeholder; use manual mode for now")
         raise SpotGammaError(f"Unsupported SpotGamma mode: {settings.mode}")

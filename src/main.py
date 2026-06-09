@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import json
 import sys
 from typing import Any, Dict, List, Optional
 
@@ -9,7 +12,8 @@ from config.settings import Settings, load_settings
 from gexbot.client import GexbotClient, GexbotResponse
 from normalization.values import normalize_spotgamma_candidates, run_normalization_self_test
 from output.writer import ensure_output_dirs, write_json
-from spotgamma.manual import SpotGammaError, load_manual_candidates
+from spotgamma.client import SpotGammaClient, SpotGammaError
+from spotgamma.manual import load_manual_candidates
 
 
 def utc_timestamp() -> str:
@@ -135,8 +139,17 @@ def run_fetch_spotgamma(settings: Settings, write_summary: bool = True) -> Dict[
     error: Optional[str] = None
 
     try:
-        raw_payload = load_manual_candidates(settings.spotgamma)
-        normalized_candidates = normalize_spotgamma_candidates(raw_payload["candidates"])
+        if settings.spotgamma.mode == "manual":
+            raw_payload = load_manual_candidates(settings.spotgamma)
+            normalized_candidates = normalize_spotgamma_candidates(raw_payload["candidates"])
+        elif settings.spotgamma.mode in {"http", "authenticated_http"}:
+            fetch_result = SpotGammaClient(settings.spotgamma).fetch_squeeze_candidates()
+            raw_payload = fetch_result.raw_payload
+            normalized_candidates = normalize_spotgamma_candidates(fetch_result.candidates)
+        elif settings.spotgamma.mode in {"playwright", "browser"}:
+            raise SpotGammaError("SpotGamma Playwright browser export mode is a placeholder; use SPOTGAMMA_MODE=http")
+        else:
+            raise SpotGammaError(f"Unsupported SpotGamma mode: {settings.spotgamma.mode}")
     except (SpotGammaError, OSError, ValueError) as exc:
         error = str(exc)
         raw_payload = {"ok": False, "error": error}
@@ -195,6 +208,71 @@ def run_fetch_all(settings: Settings) -> None:
     write_options_summary(settings, gexbot_result=gexbot_result, spotgamma_result=spotgamma_result)
 
 
+def read_latest_summary(settings: Settings) -> Dict[str, Any]:
+    path = settings.normalized_dir / "options-data-latest.json"
+    if not path.exists():
+        return {
+            "generated_at": None,
+            "sources": {
+                "gexbot": source_status(True, False, "not run"),
+                "spotgamma": source_status(True, False, "not run"),
+            },
+            "gexbot": {"tickers": [], "levels": {}, "state_greeks": {}, "orderflow": {}},
+            "spotgamma": {"squeeze_candidates": []},
+        }
+    with path.open("r", encoding="utf-8") as file:
+        return json.load(file)
+
+
+class OptionsDataRequestHandler(SimpleHTTPRequestHandler):
+    settings: Settings
+
+    def do_POST(self) -> None:
+        if self.path != "/api/fetch-all":
+            self.send_error(404, "Not found")
+            return
+
+        try:
+            run_fetch_all(self.settings)
+            summary = read_latest_summary(self.settings)
+            sources = summary.get("sources", {})
+            ok = all(source.get("ok") for source in sources.values() if isinstance(source, dict))
+            errors = [
+                f"{name}: {source.get('error')}"
+                for name, source in sources.items()
+                if isinstance(source, dict) and not source.get("ok") and source.get("error")
+            ]
+            payload = {"ok": ok, "error": "; ".join(errors) if errors else None, "summary": summary}
+            status = 200
+        except Exception as exc:  # Keep the local preview server alive on fetch failures.
+            payload = {"ok": False, "error": str(exc), "summary": read_latest_summary(self.settings)}
+            status = 500
+
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def end_headers(self) -> None:
+        self.send_header("Cache-Control", "no-store")
+        super().end_headers()
+
+
+def run_serve(settings: Settings, host: str = "127.0.0.1", port: int = 8765) -> None:
+    OptionsDataRequestHandler.settings = settings
+    handler_class = partial(OptionsDataRequestHandler, directory=str(settings.root_dir))
+    server = ThreadingHTTPServer((host, port), handler_class)
+    print(f"Options Data Viewer: http://{host}:{port}/")
+    print("POST /api/fetch-all will run a real Gexbot + SpotGamma fetch.")
+    try:
+        server.serve_forever()
+    finally:
+        server.server_close()
+
+
 def print_status(name: str, status: Dict[str, Any]) -> None:
     if status["ok"]:
         print(f"{name}: ok")
@@ -207,9 +285,12 @@ def parse_args(argv: List[str]) -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("fetch-gexbot", help="Fetch Gexbot tickers, levels, state greeks, and orderflow.")
-    subparsers.add_parser("fetch-spotgamma", help="Import and normalize SpotGamma Squeeze Candidates.")
+    subparsers.add_parser("fetch-spotgamma", help="Fetch and normalize SpotGamma Squeeze Candidates.")
     subparsers.add_parser("fetch-all", help="Run both Gexbot and SpotGamma fetchers.")
     subparsers.add_parser("normalize-test", help="Run normalization self-tests.")
+    serve_parser = subparsers.add_parser("serve", help="Run the local data viewer and live fetch API.")
+    serve_parser.add_argument("--host", default="127.0.0.1", help="Viewer host. Default: 127.0.0.1")
+    serve_parser.add_argument("--port", type=int, default=8765, help="Viewer port. Default: 8765")
 
     return parser.parse_args(argv)
 
@@ -228,6 +309,8 @@ def main(argv: List[str]) -> int:
         elif args.command == "normalize-test":
             run_normalization_self_test()
             print("normalize-test: ok")
+        elif args.command == "serve":
+            run_serve(settings, host=args.host, port=args.port)
         return 0
     except KeyboardInterrupt:
         print("Interrupted")

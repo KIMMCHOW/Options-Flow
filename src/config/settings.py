@@ -46,6 +46,7 @@ class RemoteSettings:
 
 @dataclass(frozen=True)
 class SpotGammaSettings:
+    base_url: str
     mode: str
     manual_input: Optional[Path]
     username: str
@@ -109,7 +110,8 @@ def load_settings() -> Settings:
             password=os.getenv("GEXBOT_PASSWORD", "").strip(),
         ),
         spotgamma=SpotGammaSettings(
-            mode=os.getenv("SPOTGAMMA_MODE", "manual").strip().lower(),
+            base_url=os.getenv("SPOTGAMMA_BASE_URL", "https://api.spotgamma.com").rstrip("/"),
+            mode=os.getenv("SPOTGAMMA_MODE", "http").strip().lower(),
             manual_input=_optional_path(os.getenv("SPOTGAMMA_MANUAL_INPUT", ""), root_dir),
             username=os.getenv("SPOTGAMMA_USERNAME", "").strip(),
             password=os.getenv("SPOTGAMMA_PASSWORD", "").strip(),

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Options Data Viewer</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Options Data Viewer</h1>
+        <p id="generatedAt">Loading latest data...</p>
+      </div>
+      <div class="actions">
+        <button id="themeButton" class="iconButton" title="Toggle dark mode" aria-label="Toggle dark mode">Dark</button>
+        <button id="reloadButton" class="toolButton">Reload JSON</button>
+        <button id="fetchButton" class="primaryButton">Fetch Live Data</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="statusBar" aria-label="Source status">
+        <div id="gexbotStatus" class="statusPill">Gexbot: loading</div>
+        <div id="spotgammaStatus" class="statusPill">SpotGamma: loading</div>
+        <div id="lastAction" class="statusText">Ready</div>
+      </section>
+
+      <section class="metrics" aria-label="Data summary">
+        <article>
+          <span>SpotGamma</span>
+          <strong id="spotgammaCount">0</strong>
+          <small>Squeeze Candidates</small>
+        </article>
+        <article>
+          <span>Gexbot</span>
+          <strong id="gexbotTickerCount">0</strong>
+          <small>Supported Tickers</small>
+        </article>
+        <article>
+          <span>Gexbot</span>
+          <strong id="gexbotLevelCount">0</strong>
+          <small>Levels Loaded</small>
+        </article>
+        <article>
+          <span>Gexbot</span>
+          <strong id="gexbotOrderflowCount">0</strong>
+          <small>Orderflow Loaded</small>
+        </article>
+      </section>
+
+      <nav class="tabs" aria-label="Views">
+        <button class="tab active" data-tab="spotgamma">SpotGamma</button>
+        <button class="tab" data-tab="gexbot">Gexbot</button>
+        <button class="tab" data-tab="raw">Raw Summary</button>
+      </nav>
+
+      <section id="spotgamma" class="panel active">
+        <div class="toolbar">
+          <input id="spotgammaSearch" type="search" placeholder="Search ticker or company" />
+          <select id="spotgammaSort" aria-label="Sort SpotGamma candidates">
+            <option value="ticker">Ticker</option>
+            <option value="options_implied_move">Options Implied Move</option>
+            <option value="iv_rank">IV Rank</option>
+            <option value="skew_rank">Skew Rank</option>
+            <option value="call_gamma">Call Gamma</option>
+            <option value="put_gamma">Put Gamma</option>
+            <option value="call_volume">Call Volume</option>
+            <option value="put_volume">Put Volume</option>
+          </select>
+        </div>
+        <div class="tableWrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Ticker</th>
+                <th>Company</th>
+                <th>Price</th>
+                <th>Change %</th>
+                <th>Call Wall</th>
+                <th>Put Wall</th>
+                <th>Skew Rank</th>
+                <th>IV Rank</th>
+                <th>Call Gamma</th>
+                <th>Put Gamma</th>
+                <th>Top Gamma Exp</th>
+                <th>Top Delta Exp</th>
+                <th>Call Vol</th>
+                <th>Put Vol</th>
+                <th>Implied Move</th>
+              </tr>
+            </thead>
+            <tbody id="spotgammaRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="gexbot" class="panel">
+        <div class="split">
+          <aside class="tickerPane">
+            <input id="gexbotSearch" type="search" placeholder="Search ticker" />
+            <div id="tickerList" class="tickerList"></div>
+          </aside>
+          <section class="detailPane">
+            <div class="detailHeader">
+              <h2 id="selectedTicker">Select a ticker</h2>
+              <div id="tickerBadges" class="badges"></div>
+            </div>
+            <div class="jsonGrid">
+              <article>
+                <h3>Levels</h3>
+                <pre id="levelsJson">{}</pre>
+              </article>
+              <article>
+                <h3>State Greeks</h3>
+                <pre id="stateJson">{}</pre>
+              </article>
+              <article>
+                <h3>Orderflow</h3>
+                <pre id="orderflowJson">{}</pre>
+              </article>
+            </div>
+          </section>
+        </div>
+      </section>
+
+      <section id="raw" class="panel">
+        <div class="jsonGrid">
+          <article>
+            <h3>Source Status</h3>
+            <pre id="sourceStatus">{}</pre>
+          </article>
+          <article>
+            <h3>Loaded Files</h3>
+            <pre id="loadedFiles">{}</pre>
+          </article>
+          <article>
+            <h3>Last Fetch Result</h3>
+            <pre id="lastFetchResult">{}</pre>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
