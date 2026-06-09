@@ -1,0 +1,2 @@
+ticker,company_name,Current Price,Daily Change,Previous Close,Earnings Date,Call Wall,Put Wall,Skew Rank,IV Rank,Call Gamma,Put Gamma,Top Gamma Exp,Top Delta Exp,Call Volume,Put Volume,Put/Call OI Ratio,1 M RV,1 M IV,Garch Rank,Options Implied Move
+PFE,Pfizer Inc,$25.65,0.16%,$25.61,-,$27,$25,89.20%,19.43%,-387.75M,-380.76M,2026-06-19,2028-01-22,192.44K,42.78K,0.88,16.39%,21.26%,11.29%,$0.34

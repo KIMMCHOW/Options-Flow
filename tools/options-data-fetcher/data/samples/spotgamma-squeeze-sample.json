@@ -1,0 +1,27 @@
+{
+  "squeeze_candidates": [
+    {
+      "ticker": "PFE",
+      "company_name": "Pfizer Inc",
+      "Current Price": "$25.65",
+      "Daily Change": "0.16%",
+      "Previous Close": "$25.61",
+      "Earnings Date": "-",
+      "Call Wall": "$27",
+      "Put Wall": "$25",
+      "Skew Rank": "89.20%",
+      "IV Rank": "19.43%",
+      "Call Gamma": "-387.75M",
+      "Put Gamma": "-380.76M",
+      "Top Gamma Exp": "2026-06-19",
+      "Top Delta Exp": "2028-01-22",
+      "Call Volume": "192.44K",
+      "Put Volume": "42.78K",
+      "Put/Call OI Ratio": "0.88",
+      "1 M RV": "16.39%",
+      "1 M IV": "21.26%",
+      "Garch Rank": "11.29%",
+      "Options Implied Move": "$0.34"
+    }
+  ]
+}
