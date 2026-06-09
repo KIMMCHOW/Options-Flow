@@ -515,13 +515,20 @@ function renderInteractiveGammaChart(model, ladder) {
       name: "0 Line",
       yAxis: 0,
       lineStyle: { color: "rgba(255,255,255,0.42)", type: "dotted" },
-      label: { color: "#9ca3af", formatter: "0" },
+      label: { show: true, color: "#9ca3af", formatter: "0" },
     },
     ...markLines.map((line) => ({
       name: line.label,
       xAxis: line.value,
       lineStyle: { color: line.color, type: line.type || "dashed" },
-      label: { color: line.color },
+      label: {
+        show: true,
+        color: line.color,
+        rotate: 90,
+        position: "insideEndTop",
+        distance: 4,
+        formatter: `${line.label} ${formatStrike(line.value)}`,
+      },
     })),
   ];
   const topLabels = buildTopStrikeMarkPoints(ladder);
@@ -546,6 +553,7 @@ function renderInteractiveGammaChart(model, ladder) {
       top: 12,
       textStyle: { color: axisLabelColor() },
       data: ["Gamma Proxy Line", "Strike Gamma Bars"],
+      selected: { "Gamma Proxy Line": controls.showGammaProxyLine },
     },
     toolbox: {
       right: 12,
@@ -614,13 +622,6 @@ function renderInteractiveGammaChart(model, ladder) {
         showSymbol: false,
         symbolSize: 4,
         lineStyle: { width: 2.2, color: "#14b8a6" },
-        markLine: {
-          symbol: "none",
-          silent: false,
-          label: { color: "#e5e7eb", formatter: ({ name, value }) => `${name} ${formatStrike(value)}` },
-          lineStyle: { type: "dashed", width: 1.3 },
-          data: chartMarkLines,
-        },
       },
       {
         name: "Strike Gamma Bars",
@@ -641,6 +642,13 @@ function renderInteractiveGammaChart(model, ladder) {
           itemStyle: { color: "#f59e0b" },
           data: topLabels,
         },
+        markLine: {
+          symbol: "none",
+          silent: false,
+          label: { show: false },
+          lineStyle: { type: "dashed", width: 1.3 },
+          data: chartMarkLines,
+        },
       },
     ],
   }, true);
@@ -655,11 +663,13 @@ function disposeGammaChart() {
 
 function gammaChartControls() {
   return {
+    showKeyLines: $("showKeyLines").checked,
     showSpot: $("showSpotLine").checked,
     showZeroGamma: $("showZeroGammaLine").checked,
     showMajorLines: $("showMajorLines").checked,
     showOrderflowLines: $("showOrderflowLines").checked,
     showWallLines: $("showWallLines").checked,
+    showGammaProxyLine: $("showGammaProxyLine").checked,
     smoothLine: $("smoothGammaLine").checked,
     barMode: $("gammaBarMode").value,
   };
@@ -690,6 +700,10 @@ function gammaInitialZoom(rows, spot, mode) {
 }
 
 function buildGammaMarkLines(model, ladder, controls) {
+  if (!controls.showKeyLines) {
+    return [];
+  }
+
   const levels = model.levels?.raw || {};
   const orderflow = model.orderflow || {};
   const lines = [];
@@ -1238,11 +1252,13 @@ $("candidateDate").addEventListener("change", async (event) => {
 $("tickerSearch").addEventListener("input", renderTickerList);
 [
   "gammaZoom",
+  "showKeyLines",
   "showSpotLine",
   "showZeroGammaLine",
   "showMajorLines",
   "showOrderflowLines",
   "showWallLines",
+  "showGammaProxyLine",
   "smoothGammaLine",
   "gammaBarMode",
 ].forEach((id) => {
