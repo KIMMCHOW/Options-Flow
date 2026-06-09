@@ -1,3 +1,6 @@
+const LOCAL_SERVER = "http://127.0.0.1:8765/";
+const isFilePage = window.location.protocol === "file:";
+
 const files = {
   summary: "data/normalized/options-data-latest.json",
   spotgamma: "data/normalized/spotgamma-squeeze-candidates-latest.json",
@@ -21,6 +24,20 @@ const state = {
 
 const $ = (id) => document.getElementById(id);
 
+function resolveUrl(path) {
+  if (/^https?:\/\//.test(path)) {
+    return path;
+  }
+  return isFilePage ? new URL(path, LOCAL_SERVER).toString() : path;
+}
+
+function friendlyFetchError(error) {
+  if (isFilePage) {
+    return `${error.message}. Run "python src/main.py serve" and open http://127.0.0.1:8765/ for live data.`;
+  }
+  return error.message;
+}
+
 function initTheme() {
   const saved = localStorage.getItem("options-viewer-theme");
   const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -40,16 +57,18 @@ function renderThemeButton() {
 }
 
 async function readJson(name, url) {
+  const resolvedUrl = resolveUrl(url);
   try {
-    const response = await fetch(`${url}?v=${Date.now()}`, { cache: "no-store" });
+    const separator = resolvedUrl.includes("?") ? "&" : "?";
+    const response = await fetch(`${resolvedUrl}${separator}v=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     const data = await response.json();
-    state.loaded[name] = { ok: true, path: url };
+    state.loaded[name] = { ok: true, path: resolvedUrl };
     return data;
   } catch (error) {
-    state.loaded[name] = { ok: false, path: url, error: error.message };
+    state.loaded[name] = { ok: false, path: resolvedUrl, error: friendlyFetchError(error) };
     return name === "spotgamma" || name === "tickers" ? [] : {};
   }
 }
@@ -82,7 +101,7 @@ async function fetchLiveData() {
   setBusy(true);
   $("lastAction").textContent = "Running real Gexbot + SpotGamma fetch...";
   try {
-    const response = await fetch("api/fetch-all", { method: "POST", cache: "no-store" });
+    const response = await fetch(resolveUrl("api/fetch-all"), { method: "POST", cache: "no-store" });
     const payload = await response.json();
     state.lastFetchResult = payload;
     if (!response.ok || !payload.ok) {
@@ -91,8 +110,9 @@ async function fetchLiveData() {
       $("lastAction").textContent = "Fetch complete. Latest JSON reloaded.";
     }
   } catch (error) {
-    state.lastFetchResult = { ok: false, error: error.message };
-    $("lastAction").textContent = `Fetch failed: ${error.message}`;
+    const message = friendlyFetchError(error);
+    state.lastFetchResult = { ok: false, error: message };
+    $("lastAction").textContent = `Fetch failed: ${message}`;
   } finally {
     await loadData();
     setBusy(false);
@@ -125,7 +145,10 @@ function renderMetrics() {
   $("gexbotOrderflowCount").textContent = Object.keys(state.orderflow).length;
 
   const generatedAt = state.summary.generated_at;
-  $("generatedAt").textContent = generatedAt ? `Generated at ${generatedAt}` : `Loaded at ${new Date().toISOString()}`;
+  const fileNote = isFilePage ? "file mode, using local server for data" : "server mode";
+  $("generatedAt").textContent = generatedAt
+    ? `Generated at ${generatedAt} (${fileNote})`
+    : `Loaded at ${new Date().toISOString()} (${fileNote})`;
   renderStatusPill("gexbotStatus", "Gexbot", state.summary.sources?.gexbot);
   renderStatusPill("spotgammaStatus", "SpotGamma", state.summary.sources?.spotgamma);
 }

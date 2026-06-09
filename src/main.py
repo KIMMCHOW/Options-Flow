@@ -257,8 +257,15 @@ class OptionsDataRequestHandler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def end_headers(self) -> None:
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
+
+    def do_OPTIONS(self) -> None:
+        self.send_response(204)
+        self.end_headers()
 
 
 def run_serve(settings: Settings, host: str = "127.0.0.1", port: int = 8765) -> None:

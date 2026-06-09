@@ -83,6 +83,9 @@ http://localhost:8765/
 中文：页面里的 `Fetch Live Data` 会真实运行 Gexbot + SpotGamma 抓取，并刷新 latest JSON。`Reload JSON` 只重新读取本地已有 JSON。  
 English: The `Fetch Live Data` button runs a real Gexbot + SpotGamma fetch and refreshes the latest JSON. `Reload JSON` only reloads the existing local JSON files.
 
+中文：不要直接用 `file:///.../index.html` 作为主要入口；浏览器会限制本地 JSON/API 请求。若误打开 file 页面，页面会尝试连接 `http://127.0.0.1:8765/`，但仍需要先运行 `python src/main.py serve`。  
+English: Do not use `file:///.../index.html` as the main entry. Browsers restrict local JSON/API requests. If the file page is opened by mistake, it will try `http://127.0.0.1:8765/`, but `python src/main.py serve` must still be running.
+
 ## Gexbot
 
 本地开发文档 / Local API notes:
